@@ -25,8 +25,9 @@ export interface AirQualityResponse {
   dominantPollutant: 'pm25' | 'pm10' | 'no2' | 'o3';
   pollutants: PollutantValues;
   weather: WeatherValues;
-  dataSource: 'simulated' | 'open-meteo';
+  dataSource: 'madrid-real' | 'simulated' | 'open-meteo';
   scenario?: string;
+  address?: string;
 }
 
 export interface ForecastHour {
@@ -37,6 +38,7 @@ export interface ForecastHour {
   no2: number;
   pm25: number;
   windSpeed: number;
+  temperature?: number;
   isPeakHour: boolean;
   explanation: string;
 }
@@ -49,6 +51,8 @@ export interface RouteAlternative {
   expectedLevel: Level;
   distanceKm: number;
   exposureReductionPercentage: number;
+  nearestStationCode: string;
+  nearestStationName: string;
   path: [number, number][]; // LatLng points for Leaflet polyline
 }
 
@@ -67,12 +71,14 @@ export interface RecommendationResponse {
 
 export interface Zone {
   id: string;
+  code: string;
   name: string;
-  neighborhood: string;
+  address?: string;
+  neighborhood?: string;
   city: string;
   coordinates: [number, number]; // [lat, lng]
   trafficLevel: 'alto' | 'medio' | 'bajo';
-  type: 'avenida' | 'residencial' | 'parque';
+  type: 'avenida' | 'residencial' | 'parque' | 'urbana_trafico' | 'urbana_fondo' | 'suburbana';
 }
 
 export interface UserPreferences {

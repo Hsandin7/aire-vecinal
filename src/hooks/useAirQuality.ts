@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { AirQualityData, ForecastResponse, Recommendation, Zone, Profile } from '../types';
+import type { AirQualityData, ForecastResponse, Recommendation, Zone, RouteAlternative, Profile } from '../types';
 import { getZones, getAirQuality, getForecast, getRecommendations } from '../services/api';
 
-export function useAirQuality(userProfileType: Profile = 'deportista') {
+export function useAirQuality(userProfileType: Profile = 'deportista', hasAsthma = true) {
   const [zones, setZones] = useState<Zone[]>([]);
-  const [selectedZoneId, setSelectedZoneId] = useState<string>('madrid-castellana');
+  const [routes, setRoutes] = useState<RouteAlternative[]>([]);
+  const [selectedZoneId, setSelectedZoneId] = useState<string>('28079008'); // Escuelas Aguirre
   const [isDemo, setIsDemo] = useState<boolean>(false);
 
   const [airQuality, setAirQuality] = useState<AirQualityData | null>(null);
@@ -14,20 +15,21 @@ export function useAirQuality(userProfileType: Profile = 'deportista') {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Cargar zonas iniciales
+  // Cargar estaciones y rutas iniciales
   useEffect(() => {
     let isMounted = true;
     getZones()
       .then((data) => {
-        if (isMounted && data.length > 0) {
-          setZones(data);
-          setSelectedZoneId((prev) => prev || data[0].id);
+        if (isMounted) {
+          setZones(data.zones);
+          setRoutes(data.routes);
+          setSelectedZoneId((prev) => prev || data.zones[1]?.id || '28079008');
         }
       })
       .catch((err) => {
         if (isMounted) {
-          console.error('Error al cargar zonas:', err);
-          setError('No se pudieron cargar las zonas de la ciudad.');
+          console.error('Error al cargar estaciones de Madrid:', err);
+          setError('No se pudieron cargar las estaciones de Madrid.');
         }
       });
 
@@ -37,7 +39,7 @@ export function useAirQuality(userProfileType: Profile = 'deportista') {
   }, []);
 
   const selectedZone = useMemo(() => {
-    return zones.find((z) => z.id === selectedZoneId) || zones[0];
+    return zones.find((z) => z.id === selectedZoneId) || zones[1] || zones[0];
   }, [zones, selectedZoneId]);
 
   const loadData = useCallback(async (zoneId: string, demoMode: boolean) => {
@@ -49,7 +51,7 @@ export function useAirQuality(userProfileType: Profile = 'deportista') {
       const [aqData, fcData, recData] = await Promise.all([
         getAirQuality(zoneId, scenarioParam),
         getForecast(zoneId, scenarioParam),
-        getRecommendations(zoneId, userProfileType, scenarioParam),
+        getRecommendations(zoneId, userProfileType, hasAsthma, scenarioParam),
       ]);
 
       setAirQuality(aqData);
@@ -62,9 +64,8 @@ export function useAirQuality(userProfileType: Profile = 'deportista') {
     } finally {
       setLoading(false);
     }
-  }, [userProfileType]);
+  }, [userProfileType, hasAsthma]);
 
-  // Cargar datos cada vez que cambia la zona o el modo demo
   useEffect(() => {
     if (selectedZoneId) {
       loadData(selectedZoneId, isDemo);
@@ -83,6 +84,7 @@ export function useAirQuality(userProfileType: Profile = 'deportista') {
 
   return {
     zones,
+    routes,
     selectedZoneId,
     selectedZone,
     setSelectedZoneId,

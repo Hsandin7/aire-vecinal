@@ -18,6 +18,7 @@ export const Alerts: React.FC = () => {
   const { profile } = useUserProfile();
   const {
     zones,
+    routes,
     selectedZoneId,
     selectedZone,
     setSelectedZoneId,
@@ -26,13 +27,13 @@ export const Alerts: React.FC = () => {
     loading,
     error,
     isDemo,
-  } = useAirQuality(profile.profile);
+  } = useAirQuality(profile.profile, profile.hasAsthma);
 
   const profileLabels: Record<string, string> = {
-    deportista: 'Deportista',
+    deportista: 'Deportista / Runner',
     asmatico: 'Sensible / Asma',
     familia: 'Familia con niños',
-    general: 'General',
+    general: 'Población General',
   };
 
   return (
@@ -49,7 +50,7 @@ export const Alerts: React.FC = () => {
                 Alertas y Rutas
               </h1>
               <span className="text-[10px] text-sky-200 font-medium">
-                Recomendaciones y desvíos limpios
+                Recomendaciones y los 4 pulmones verdes de Madrid
               </span>
             </div>
           </div>
@@ -72,9 +73,9 @@ export const Alerts: React.FC = () => {
               {profile.hasAsthma && ' (Con asma)'}
             </span>
           </div>
-          <div className="flex items-center gap-1 text-[11px] text-sky-200">
-            <MapPin size={12} />
-            <span className="truncate max-w-[100px]">{selectedZone?.neighborhood}</span>
+          <div className="flex items-center gap-1 text-[11px] text-sky-200 truncate">
+            <MapPin size={12} className="shrink-0" />
+            <span className="truncate max-w-[120px]">{selectedZone?.name}</span>
           </div>
         </div>
       </header>
@@ -97,18 +98,18 @@ export const Alerts: React.FC = () => {
               {/* Aviso destacado */}
               <AlertBanner recommendation={recommendation} compact={false} />
 
-              {/* Tarjeta de Ruta Alternativa */}
+              {/* Tarjeta de Ruta Alternativa Recomendada */}
               {recommendation.alternativeRoute ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <Trees size={16} className="text-emerald-700" />
                       <h2 className="text-sm font-bold text-slate-800">
-                        Ruta Alternativa Recomendada
+                        Ruta Verde Recomendada
                       </h2>
                     </div>
                     <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                      Aire Bueno
+                      Mejor índice previsto: {recommendation.alternativeRoute.expectedLevel.toUpperCase()}
                     </span>
                   </div>
 
@@ -126,20 +127,21 @@ export const Alerts: React.FC = () => {
                 </div>
               )}
 
-              {/* Trazado de la ruta sobre el Mapa Leaflet */}
+              {/* Trazado de las 4 rutas en el Mapa Leaflet */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <MapPin size={16} className="text-[#1F4E79]" />
-                    <h2 className="text-sm font-bold text-slate-800">Trazado Protegido en Mapa</h2>
+                    <h2 className="text-sm font-bold text-slate-800">Mapa de las 4 Rutas de Madrid</h2>
                   </div>
                   <span className="text-[11px] text-slate-500">
-                    {recommendation.alternativeRoute?.name || 'Mapa del barrio'}
+                    {recommendation.alternativeRoute?.name || 'Rutas protegidas'}
                   </span>
                 </div>
 
                 <MapView
                   zones={zones}
+                  allRoutes={routes}
                   selectedZoneId={selectedZoneId}
                   onSelectZone={setSelectedZoneId}
                   currentLevel={airQuality?.level}
@@ -148,16 +150,50 @@ export const Alerts: React.FC = () => {
                 />
               </div>
 
-              {/* Nota científica / urbana */}
+              {/* Las 4 Rutas Fijas de Madrid */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-2 shadow-2xs">
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  Red de 4 Rutas Verdes en Madrid:
+                </h3>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {routes.map((r) => {
+                    const isRecommended = recommendation.alternativeRoute?.id === r.id;
+                    return (
+                      <div
+                        key={r.id}
+                        className={`p-2 rounded-xl border ${
+                          isRecommended
+                            ? 'border-emerald-400 bg-emerald-50 text-emerald-900 font-bold'
+                            : 'border-slate-100 bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold">{r.name}</span>
+                          {isRecommended && (
+                            <span className="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 rounded-full">
+                              Óptima
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-slate-500 block">
+                          AQI {r.expectedAqi} • {r.distanceKm} km
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Nota explicativa de salud urbana */}
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-1 text-xs text-slate-600">
                 <div className="flex items-center gap-1.5 text-slate-800 font-bold">
                   <ShieldCheck size={15} className="text-emerald-600" />
-                  <span>Por qué funciona la ruta interior</span>
+                  <span>Criterio de recomendación de rutas</span>
                 </div>
                 <p className="text-[11px] leading-relaxed text-slate-500">
-                  Separarse 200–300 metros de una vía con tráfico denso y transitar junto a arbolado
-                  urbano reduce la inhalación de partículas ultrafinas y dióxido de nitrógeno hasta en
-                  un 50%, evitando los puntos de mayor estancamiento de gases de combustión.
+                  El motor de riesgo evalúa de forma continua el índice de calidad del aire previsto
+                  en la estación más cercana a cada uno de los 4 grandes parques de Madrid y te
+                  recomienda automáticamente la ruta con menor concentración de partículas y gases contaminantes.
                 </p>
               </div>
             </>

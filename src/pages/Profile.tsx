@@ -13,10 +13,11 @@ import {
   Activity,
   AlertCircle,
   Smartphone,
+  RotateCcw,
 } from 'lucide-react';
 
 export const Profile: React.FC = () => {
-  const { profile, updateProfile, loading } = useUserProfile();
+  const { profile, updateProfile, resetOnboarding } = useUserProfile();
   const [zones, setZones] = useState<Zone[]>([]);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<string>('default');
@@ -30,7 +31,10 @@ export const Profile: React.FC = () => {
   const [endTime, setEndTime] = useState<string>(profile.notificationHours.end);
 
   useEffect(() => {
-    getZones().then(setZones).catch(console.error);
+    getZones()
+      .then((data) => setZones(data.zones))
+      .catch(console.error);
+
     if ('Notification' in window) {
       setNotificationPermission(Notification.permission);
     }
@@ -53,8 +57,8 @@ export const Profile: React.FC = () => {
     const result = await Notification.requestPermission();
     setNotificationPermission(result);
     if (result === 'granted') {
-      new Notification('AireVecinal Activado', {
-        body: 'Notificaciones activadas. Te avisaremos si suben los niveles de NO₂ en tu zona.',
+      new Notification('AireVecinal Madrid', {
+        body: 'Notificaciones activadas. Te avisaremos cuando el aire empeore en tu estación de referencia.',
         icon: '/vite.svg',
       });
     }
@@ -119,18 +123,30 @@ export const Profile: React.FC = () => {
     <div className="flex flex-col min-h-screen">
       {/* Cabecera */}
       <header className="bg-[#1F4E79] text-white p-4 pt-5 pb-5 shadow-md rounded-b-3xl">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-white/10 rounded-xl text-emerald-400">
-            <User size={20} />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-white/10 rounded-xl text-emerald-400">
+              <User size={20} />
+            </div>
+            <div>
+              <h1 className="text-lg font-black tracking-tight leading-none">
+                Perfil y Preferencias
+              </h1>
+              <span className="text-[10px] text-sky-200 font-medium">
+                Almacenamiento privado local en tu dispositivo
+              </span>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-black tracking-tight leading-none">
-              Perfil y Preferencias
-            </h1>
-            <span className="text-[10px] text-sky-200 font-medium">
-              Sensibilidad personalizada y alertas vecinales
-            </span>
-          </div>
+
+          {/* Botón: Repetir configuración */}
+          <button
+            onClick={resetOnboarding}
+            className="flex items-center gap-1 text-[11px] font-bold bg-white/15 hover:bg-white/25 px-2.5 py-1.5 rounded-xl text-white transition-colors border border-white/20"
+            title="Repetir asistente de bienvenida y configuración"
+          >
+            <RotateCcw size={13} />
+            <span>Repetir configuración</span>
+          </button>
         </div>
       </header>
 
@@ -140,7 +156,7 @@ export const Profile: React.FC = () => {
           <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl p-3 text-xs flex items-center gap-2 animate-in fade-in">
             <Check size={16} className="text-emerald-600" />
             <span className="font-semibold">
-              ¡Preferencias guardadas en el dispositivo y sincronizadas con éxito!
+              ¡Preferencias guardadas exclusivamente en tu navegador (localStorage)!
             </span>
           </div>
         )}
@@ -199,24 +215,24 @@ export const Profile: React.FC = () => {
                 className="w-4 h-4 rounded text-[#1F4E79] focus:ring-[#1F4E79]"
               />
               <span className="text-xs text-slate-700 font-medium">
-                Padezco asma o sensibilidad respiratoria diagnosticada
+                Padezco asma u otra sensibilidad respiratoria diagnosticada
               </span>
             </label>
           </div>
 
-          {/* Zonas Favoritas */}
+          {/* Estaciones Favoritas de Madrid */}
           <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <MapPin size={16} className="text-[#1F4E79]" />
                 <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  Zonas y Barrios de Interés
+                  Estaciones Favoritas de Madrid
                 </h2>
               </div>
-              <span className="text-[10px] text-slate-400">Madrid</span>
+              <span className="text-[10px] text-slate-400">{zones.length} disponibles</span>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
               {zones.map((z) => {
                 const isChecked = favoriteZones.includes(z.id);
                 return (
@@ -224,24 +240,24 @@ export const Profile: React.FC = () => {
                     key={z.id}
                     className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 cursor-pointer border border-transparent hover:border-slate-100"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 truncate">
                       <input
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => toggleZone(z.id)}
-                        className="w-4 h-4 rounded text-[#1F4E79] focus:ring-[#1F4E79]"
+                        className="w-4 h-4 rounded text-[#1F4E79] focus:ring-[#1F4E79] shrink-0"
                       />
-                      <div>
-                        <span className="text-xs font-semibold text-slate-800 block">
-                          {z.name}
+                      <div className="truncate">
+                        <span className="text-xs font-semibold text-slate-800 block truncate">
+                          {z.name} (#{z.code})
                         </span>
-                        <span className="text-[10px] text-slate-400">
-                          {z.neighborhood} • {z.type}
+                        <span className="text-[10px] text-slate-400 truncate block">
+                          {z.address}
                         </span>
                       </div>
                     </div>
-                    <span className="text-[10px] font-medium text-slate-500 uppercase">
-                      Tráfico {z.trafficLevel}
+                    <span className="text-[10px] font-medium text-slate-500 uppercase shrink-0">
+                      {z.type?.replace('_', ' ')}
                     </span>
                   </label>
                 );
@@ -351,14 +367,9 @@ export const Profile: React.FC = () => {
           {/* Botón Guardar */}
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-[#1F4E79] hover:bg-[#163a5c] text-white py-3.5 px-4 rounded-2xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full bg-[#1F4E79] hover:bg-[#163a5c] text-white py-3.5 px-4 rounded-2xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
           >
-            {loading ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Check size={18} />
-            )}
+            <Check size={18} />
             <span>Guardar Preferencias</span>
           </button>
         </form>
@@ -366,8 +377,8 @@ export const Profile: React.FC = () => {
         <div className="flex items-start gap-2 p-3 bg-slate-50 rounded-xl text-[11px] text-slate-500">
           <AlertCircle size={14} className="shrink-0 mt-0.5 text-slate-400" />
           <p>
-            Tus datos de sensibilidad se guardan en tu navegador (localStorage) y se sincronizan
-            con el motor de riesgo para calibrar las alertas en tus horas de entrenamiento o paseo.
+            Privacidad garantizada: tus datos de sensibilidad y ubicación se guardan exclusivamente
+            en tu dispositivo (localStorage) y nunca se envían a ningún servidor externo.
           </p>
         </div>
       </main>

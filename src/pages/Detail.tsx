@@ -11,6 +11,7 @@ import {
   Cpu,
   MapPin,
   ChevronRight,
+  Radio,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -23,7 +24,7 @@ export const Detail: React.FC = () => {
     loading,
     error,
     isDemo,
-  } = useAirQuality(profile.profile);
+  } = useAirQuality(profile.profile, profile.hasAsthma);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -39,24 +40,43 @@ export const Detail: React.FC = () => {
                 Detalle Ambiental
               </h1>
               <span className="text-[10px] text-sky-200 font-medium">
-                Sensores urbanos y previsión horaria
+                Red de Calidad del Aire de Madrid
               </span>
             </div>
           </div>
           {airQuality && <AirQualityBadge level={airQuality.level} size="sm" />}
         </div>
 
-        {/* Zona actual */}
+        {/* Estación de Madrid */}
         <div className="mt-3 bg-white/10 backdrop-blur-md rounded-xl px-3 py-2 flex items-center justify-between text-xs border border-white/15">
           <div className="flex items-center gap-1.5 truncate">
             <MapPin size={14} className="text-emerald-400 shrink-0" />
-            <span className="font-semibold truncate">{selectedZone?.name}</span>
+            <div className="truncate">
+              <span className="font-semibold block truncate">
+                {selectedZone?.name} (#{selectedZone?.code})
+              </span>
+              <span className="text-[10px] text-slate-300 block truncate">
+                {selectedZone?.address}
+              </span>
+            </div>
           </div>
-          {isDemo && (
-            <span className="text-[10px] font-bold bg-rose-500 text-white px-2 py-0.5 rounded-full">
-              Demo
-            </span>
-          )}
+          <div className="flex items-center gap-1 shrink-0">
+            {airQuality?.dataSource === 'madrid-real' ? (
+              <span className="text-[10px] font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1">
+                <Radio size={9} className="animate-pulse" />
+                <span>En vivo</span>
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold bg-amber-500 text-white px-2 py-0.5 rounded-full">
+                Simulado
+              </span>
+            )}
+            {isDemo && (
+              <span className="text-[10px] font-bold bg-rose-500 text-white px-2 py-0.5 rounded-full">
+                Demo
+              </span>
+            )}
+          </div>
         </div>
       </header>
 
@@ -65,7 +85,7 @@ export const Detail: React.FC = () => {
         {loading && !airQuality ? (
           <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center space-y-2">
             <div className="w-8 h-8 border-3 border-[#1F4E79] border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-xs text-slate-500">Cargando desglose de contaminantes...</p>
+            <p className="text-xs text-slate-500">Cargando sensores de la estación...</p>
           </div>
         ) : error ? (
           <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 text-xs text-rose-800">
@@ -132,34 +152,33 @@ export const Detail: React.FC = () => {
                 </div>
               </div>
 
-              {/* Gráfica de previsión horaria */}
+              {/* Gráfica de previsión horaria alimentada con Open-Meteo */}
               {forecast && <HourlyChart data={forecast.forecastHours} />}
 
-              {/* Tarjeta de explicabilidad del modelo */}
+              {/* Tarjeta de modelo explicable */}
               <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 bg-blue-50 text-[#1F4E79] rounded-lg">
                     <Cpu size={16} />
                   </div>
                   <h3 className="text-xs font-bold text-slate-800">
-                    Modelo de Previsión Explicable (White-Box)
+                    Nowcasting Explicable (Open-Meteo + Tráfico Madrid)
                   </h3>
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  Este sistema implementa un modelo físico-estadístico determinista como sustituto
-                  explicable de un algoritmo de Inteligencia Artificial (caja negra). Integra:
+                  El modelo físico-estadístico determinista calcula la evolución horaria combinando:
                 </p>
                 <ul className="text-[11px] text-slate-600 space-y-1 pl-1 list-disc list-inside">
                   <li>
-                    <strong>Picos de tráfico rodado:</strong> incremento del 35% de NO₂ y 25% de PM2.5
-                    en horas punta (08:00-10:00 y 18:00-21:00).
+                    <strong>Velocidad del viento prevista (Open-Meteo):</strong> vientos en calma
+                    (&lt;5 km/h) incrementan la concentración de partículas.
                   </li>
                   <li>
-                    <strong>Ventilación eólica:</strong> vientos inferiores a 5 km/h atrapan partículas
-                    por inversión térmica urbana.
+                    <strong>Ciclo de tráfico de Madrid:</strong> picos de emisiones en horas punta
+                    (08:00–10:00 y 18:00–21:00).
                   </li>
                   <li>
-                    <strong>Dispersión arbórea:</strong> reducción en entornos con dosel vegetal.
+                    <strong>Inercia atmosférica urbana:</strong> retención por cañones urbanos de edificios.
                   </li>
                 </ul>
               </div>
@@ -169,7 +188,7 @@ export const Detail: React.FC = () => {
                 to="/alerts"
                 className="w-full bg-[#1F4E79] text-white py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-between shadow-sm hover:bg-[#163a5c] transition-colors"
               >
-                <span>Ver recomendaciones y ruta protegida</span>
+                <span>Ver rutas verdes alternativas y consejos</span>
                 <ChevronRight size={16} />
               </Link>
             </>

@@ -61,7 +61,7 @@ describe('Motor de Riesgo de AireVecinal (riskEngine)', () => {
     expect(calculated.aqi).toBeGreaterThan(100);
     expect(['malo', 'muy_malo']).toContain(calculated.level);
 
-    const recommendation = evaluateRisk(calculated.aqi, 'general', false, 'madrid-castellana');
+    const recommendation = evaluateRisk(calculated.aqi, 'general', false, '28079008');
     expect(recommendation.alternativeRoute).toBeDefined();
     expect(recommendation.alternativeRoute?.expectedLevel).toBe('bueno');
     expect(recommendation.alternativeRoute?.path.length).toBeGreaterThan(0);
@@ -112,16 +112,17 @@ describe('Motor de Riesgo de AireVecinal (riskEngine)', () => {
       calculated.aqi,
       'deportista',
       true,
-      'madrid-castellana',
+      '28079008',
       true
     );
 
     expect(demoRecommendation.level).toBe('malo');
     expect(demoRecommendation.alertMessage).toBe(
-      "Riesgo alto en tu zona de 18:00 a 21:00. Evita correr hoy; si sales, usa la ruta por el parque interior (índice 'Bueno')."
+      'Riesgo alto en tu zona de 18:00 a 21:00. Evita correr hoy; si sales, usa la ruta por el Retiro (índice Bueno).'
     );
-    expect(demoRecommendation.timeWindow).toBe('18:00 - 21:00');
+    expect(demoRecommendation.timeWindow).toBe('18:00 a 21:00');
     expect(demoRecommendation.alternativeRoute).toBeDefined();
+    expect(demoRecommendation.alternativeRoute?.name).toBe('Ruta por el Retiro');
     expect(demoRecommendation.alternativeRoute?.expectedLevel).toBe('bueno');
   });
 

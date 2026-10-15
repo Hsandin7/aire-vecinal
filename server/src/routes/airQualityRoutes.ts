@@ -1,78 +1,85 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { MADRID_ZONES } from '../data/mockData.js';
-import { findZoneById, getAirQualityData } from '../services/simulator.js';
+import { MADRID_STATIONS, FIXED_ROUTES } from '../data/mockData.js';
+import { findStationById, getAirQualityData } from '../services/simulator.js';
 import { evaluateRisk, generateExplainableForecast } from '../services/riskEngine.js';
-import { getUserPreferences, saveUserPreferences } from '../services/storage.js';
 import type { Profile } from '../types.js';
 
 const router = Router();
-
 const VALID_PROFILES: Profile[] = ['general', 'deportista', 'asmatico', 'familia'];
 
 /**
  * GET /api/zones
- * Lista de zonas/barrios simulados con coordenadas.
+ * Lista de las 24 estaciones oficiales de la Red de Calidad del Aire de Madrid.
  */
 router.get('/zones', (_req: Request, res: Response) => {
   res.json({
-    zones: MADRID_ZONES,
-    count: MADRID_ZONES.length,
+    zones: MADRID_STATIONS,
+    routes: FIXED_ROUTES,
+    count: MADRID_STATIONS.length,
+    attribution: {
+      openData: 'Ayuntamiento de Madrid – datos abiertos (CC BY 4.0)',
+      weather: 'Open-Meteo',
+    },
   });
 });
 
 /**
  * GET /api/air-quality?zone=ID&scenario=demo
- * Valores actuales de PM2.5, PM10, NO₂, O₃, índice calculado, nivel y meteorología.
+ * Valores actuales de la estación (tiempo real de datos.madrid.es o simulación de respaldo).
  */
 router.get('/air-quality', async (req: Request, res: Response) => {
-  const zoneId = (req.query.zone as string) || 'madrid-castellana';
+  const zoneId = (req.query.zone as string) || '28079008';
   const scenario = req.query.scenario as string | undefined;
 
-  const zone = findZoneById(zoneId);
-  const data = await getAirQualityData(zone, scenario);
+  const station = findStationById(zoneId);
+  const { airQuality } = await getAirQualityData(station, scenario);
 
-  res.json(data);
+  res.json(airQuality);
 });
 
 /**
  * GET /api/forecast?zone=ID&scenario=demo
- * Previsión por horas de las próximas 6 h con índice previsto y explicación de factores.
+ * Previsión a 6 horas combinando Open-Meteo y modelo de dispersión de Madrid.
  */
 router.get('/forecast', async (req: Request, res: Response) => {
-  const zoneId = (req.query.zone as string) || 'madrid-castellana';
+  const zoneId = (req.query.zone as string) || '28079008';
   const scenario = req.query.scenario as string | undefined;
 
-  const zone = findZoneById(zoneId);
-  const currentData = await getAirQualityData(zone, scenario);
+  const station = findStationById(zoneId);
+  const { airQuality, hourlyWeatherForecast } = await getAirQualityData(station, scenario);
 
   const forecast = generateExplainableForecast(
-    currentData.aqi,
-    currentData.pollutants,
-    currentData.weather.windSpeed
+    airQuality.aqi,
+    airQuality.pollutants,
+    airQuality.weather.windSpeed,
+    new Date(),
+    hourlyWeatherForecast
   );
 
   res.json({
-    zoneId: zone.id,
-    zoneName: zone.name,
+    zoneId: station.id,
+    zoneName: station.name,
+    address: station.address,
     generatedAt: new Date().toISOString(),
     forecastHours: forecast,
     modelNotes:
-      'Nowcasting físico-explicable a 6h basado en tendencia base, ciclo diario de tráfico rodado urbano y factor de dispersión eólica.',
+      'Nowcasting físico-explicable a 6h basado en Open-Meteo y ciclo diario de tráfico rodado urbano del Ayuntamiento de Madrid.',
   });
 });
 
 /**
  * GET /api/recommendations?zone=ID&profile=TIPO&scenario=demo
- * Recomendación personalizada y ruta alternativa calculada según el motor de riesgo.
+ * Evalúa el riesgo y recomienda la mejor de las 4 rutas fijas protegidas.
  */
 router.get('/recommendations', async (req: Request, res: Response) => {
-  const zoneId = (req.query.zone as string) || 'madrid-castellana';
+  const zoneId = (req.query.zone as string) || '28079008';
   const profileQuery = req.query.profile as string | undefined;
+  const asthmaQuery = req.query.asthma as string | undefined;
   const scenario = req.query.scenario as string | undefined;
   const isDemo = scenario === 'demo';
 
-  let profile: Profile;
+  let profile: Profile = 'deportista';
   if (profileQuery) {
     if (!VALID_PROFILES.includes(profileQuery as Profile)) {
       res.status(400).json({
@@ -81,73 +88,21 @@ router.get('/recommendations', async (req: Request, res: Response) => {
       return;
     }
     profile = profileQuery as Profile;
-  } else {
-    const userPrefs = getUserPreferences();
-    profile = userPrefs.profile;
   }
 
-  const zone = findZoneById(zoneId);
-  const currentData = await getAirQualityData(zone, scenario);
-  const userPrefs = getUserPreferences();
+  const hasAsthma = asthmaQuery === 'true' || isDemo || profile === 'asmatico';
+  const station = findStationById(zoneId);
+  const { airQuality } = await getAirQualityData(station, scenario);
 
   const recommendation = evaluateRisk(
-    currentData.aqi,
+    airQuality.aqi,
     profile,
-    userPrefs.hasAsthma,
-    zone.id,
+    hasAsthma,
+    station.id,
     isDemo
   );
 
   res.json(recommendation);
-});
-
-/**
- * GET /api/profile
- * Lee las preferencias del usuario persistidas.
- */
-router.get('/profile', (_req: Request, res: Response) => {
-  const prefs = getUserPreferences();
-  res.json(prefs);
-});
-
-/**
- * POST /api/profile
- * Guarda las preferencias del usuario (valida perfil, zonas y tipos de alerta).
- */
-router.post('/profile', (req: Request, res: Response) => {
-  const body = req.body;
-
-  if (!body || typeof body !== 'object') {
-    res.status(400).json({ error: 'Cuerpo de petición inválido o ausente' });
-    return;
-  }
-
-  if (body.profile && !VALID_PROFILES.includes(body.profile)) {
-    res.status(400).json({
-      error: `Perfil no válido. Valores permitidos: ${VALID_PROFILES.join(', ')}`,
-    });
-    return;
-  }
-
-  if (body.alertTypes && !['all', 'severe_only'].includes(body.alertTypes)) {
-    res.status(400).json({
-      error: "Tipo de alerta no válido. Valores permitidos: 'all', 'severe_only'",
-    });
-    return;
-  }
-
-  if (body.favoriteZones && !Array.isArray(body.favoriteZones)) {
-    res.status(400).json({
-      error: 'favoriteZones debe ser un arreglo de IDs de zona',
-    });
-    return;
-  }
-
-  const updated = saveUserPreferences(body);
-  res.json({
-    message: 'Preferencias actualizadas correctamente',
-    profile: updated,
-  });
 });
 
 export default router;

@@ -1,56 +1,46 @@
 import type { AirQualityResponse, PollutantValues, WeatherValues, Zone } from '../types.js';
 import { calculateAqiAndDominant } from './riskEngine.js';
-import { MADRID_ZONES } from '../data/mockData.js';
+import { MADRID_STATIONS } from '../data/mockData.js';
+import { getRealPollutantsForStation, fetchOpenMeteoForecast } from './madridAirService.js';
 
 /**
- * Consulta la API pública Open-Meteo Air Quality (opcional si USE_REAL_DATA=true).
+ * Busca una estación por su ID (ej. '28079008') o código corto (ej. '8').
+ * Si no se encuentra, devuelve por defecto 'Escuelas Aguirre' (28079008).
  */
-export async function fetchOpenMeteoAirQuality(lat: number, lng: number): Promise<PollutantValues | null> {
-  try {
-    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=pm10,pm2_5,nitrogen_dioxide,ozone`;
-    const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-    if (!response.ok) {
-      return null;
-    }
-    interface OpenMeteoResult {
-      current?: {
-        pm2_5?: number;
-        pm10?: number;
-        nitrogen_dioxide?: number;
-        ozone?: number;
-      };
-    }
-    const json = (await response.json()) as OpenMeteoResult;
-    const current = json.current;
-    if (!current) return null;
-
-    return {
-      pm25: Math.round(current.pm2_5 ?? 15),
-      pm10: Math.round(current.pm10 ?? 25),
-      no2: Math.round(current.nitrogen_dioxide ?? 35),
-      o3: Math.round(current.ozone ?? 40),
-    };
-  } catch (error) {
-    console.warn('[Open-Meteo] Error al conectar con Open-Meteo API. Usando simulación:', error);
-    return null;
-  }
+export function findStationById(stationIdOrCode?: string): Zone {
+  if (!stationIdOrCode) return MADRID_STATIONS[1]; // Escuelas Aguirre
+  const found = MADRID_STATIONS.find(
+    (s) =>
+      s.id === stationIdOrCode ||
+      s.code === stationIdOrCode ||
+      parseInt(s.code, 10) === parseInt(stationIdOrCode, 10)
+  );
+  return found || MADRID_STATIONS[1];
 }
 
+// Alias de retrocompatibilidad
+export const findZoneById = findStationById;
+
 /**
- * Genera datos de calidad del aire simulados de forma realista con picos en horas punta (8-10h y 18-21h)
- * y viento bajo, permitiendo forzar el escenario demo.
+ * Obtiene los datos de calidad del aire para una estación.
+ * En modo real: consulta el portal de datos abiertos del Ayuntamiento de Madrid y Open-Meteo.
+ * Si falla o DATA_MODE=simulated: genera datos simulados calibrados para Madrid.
+ * En modo demo: fuerza la estación Escuelas Aguirre con NO2=130, PM2.5=45 y viento bajo.
  */
 export async function getAirQualityData(
-  zone: Zone,
+  station: Zone,
   scenario?: string
-): Promise<AirQualityResponse> {
+): Promise<{
+  airQuality: AirQualityResponse;
+  hourlyWeatherForecast?: Array<{ time: string; temperature: number; windSpeed: number }>;
+}> {
   const isDemo = scenario === 'demo';
   const now = new Date();
-  const currentHour = now.getHours();
 
-  // Escenario DEMO fijado según sección 8:
-  // "Datos ficticios: NO₂ = 130 µg/m³, PM2.5 = 45 µg/m³, viento bajo, perfil = deportista con asma"
+  // Escenario DEMO oficial (Sección 5):
+  // "El botón 'Simular episodio' usa la estación Escuelas Aguirre con NO₂ = 130, PM2.5 = 45, viento bajo y perfil deportista con asma."
   if (isDemo) {
+    const demoStation = findStationById('28079008'); // Escuelas Aguirre
     const pollutants: PollutantValues = {
       no2: 130,
       pm25: 45,
@@ -59,7 +49,7 @@ export async function getAirQualityData(
     };
 
     const weather: WeatherValues = {
-      windSpeed: 3.2, // viento bajo (< 5 km/h)
+      windSpeed: 3.2, // viento bajo
       temperature: 22,
       humidity: 45,
       windDirection: 'Calma / SO',
@@ -68,114 +58,113 @@ export async function getAirQualityData(
     const result = calculateAqiAndDominant(pollutants);
 
     return {
-      zoneId: zone.id,
-      zoneName: zone.name,
-      timestamp: now.toISOString(),
-      aqi: result.aqi,
-      level: result.level,
-      dominantPollutant: result.dominantPollutant,
-      pollutants,
-      weather,
-      dataSource: 'simulated',
-      scenario: 'demo',
-    };
-  }
-
-  // Comprobar si se solicitan datos reales de Open-Meteo mediante variable de entorno
-  const useRealData = process.env.USE_REAL_DATA === 'true';
-  let realPollutants: PollutantValues | null = null;
-  if (useRealData) {
-    realPollutants = await fetchOpenMeteoAirQuality(zone.coordinates[0], zone.coordinates[1]);
-  }
-
-  if (realPollutants) {
-    const result = calculateAqiAndDominant(realPollutants);
-    return {
-      zoneId: zone.id,
-      zoneName: zone.name,
-      timestamp: now.toISOString(),
-      aqi: result.aqi,
-      level: result.level,
-      dominantPollutant: result.dominantPollutant,
-      pollutants: realPollutants,
-      weather: {
-        windSpeed: 8,
-        temperature: 20,
-        humidity: 50,
-        windDirection: 'NE',
+      airQuality: {
+        zoneId: demoStation.id,
+        zoneName: demoStation.name,
+        address: demoStation.address,
+        timestamp: now.toISOString(),
+        aqi: result.aqi,
+        level: result.level,
+        dominantPollutant: result.dominantPollutant,
+        pollutants,
+        weather,
+        dataSource: 'simulated',
+        scenario: 'demo',
       },
-      dataSource: 'open-meteo',
     };
   }
 
-  // Generación simulada realista con picos de hora punta y tipo de zona urbana:
+  const dataMode = process.env.DATA_MODE || 'real';
+  let hourlyWeatherForecast: Array<{ time: string; temperature: number; windSpeed: number }> | undefined;
+  let weather: WeatherValues = {
+    windSpeed: 8,
+    temperature: 20,
+    humidity: 48,
+    windDirection: 'NE 8 km/h',
+  };
+
+  // Intentar obtener meteorología real de Open-Meteo
+  const openMeteoData = await fetchOpenMeteoForecast(station.coordinates[0], station.coordinates[1]);
+  if (openMeteoData) {
+    weather = openMeteoData.currentWeather;
+    hourlyWeatherForecast = openMeteoData.hourlyForecast;
+  }
+
+  // Si está activado modo real, intentar leer CSV de Madrid
+  if (dataMode !== 'simulated') {
+    const realPollutants = await getRealPollutantsForStation(station.code);
+    if (realPollutants) {
+      const calculated = calculateAqiAndDominant(realPollutants);
+      return {
+        airQuality: {
+          zoneId: station.id,
+          zoneName: station.name,
+          address: station.address,
+          timestamp: now.toISOString(),
+          aqi: calculated.aqi,
+          level: calculated.level,
+          dominantPollutant: calculated.dominantPollutant,
+          pollutants: realPollutants,
+          weather,
+          dataSource: 'madrid-real',
+        },
+        hourlyWeatherForecast,
+      };
+    }
+  }
+
+  // Fallback a simulación realista si falla la red municipal o DATA_MODE=simulated
+  const currentHour = now.getHours();
   const isMorningPeak = currentHour >= 8 && currentHour <= 10;
   const isEveningPeak = currentHour >= 18 && currentHour <= 21;
   const isPeak = isMorningPeak || isEveningPeak;
 
-  // Modificador según tipología de la zona
-  let zoneMultiplier: number;
-  if (zone.type === 'avenida') {
-    zoneMultiplier = 1.35;
-  } else if (zone.type === 'parque') {
-    zoneMultiplier = 0.55;
-  } else {
-    zoneMultiplier = 1.0; // residencial
+  let baseMultiplier = 1.0;
+  if (station.type === 'urbana_trafico') {
+    baseMultiplier = 1.3;
+  } else if (station.type === 'suburbana') {
+    baseMultiplier = 0.6;
   }
 
-  // Simulación temporal realista
-  let baseNo2 = 35;
-  let basePm25 = 14;
+  let baseNo2 = 38;
+  let basePm25 = 15;
   let basePm10 = 26;
   let baseO3 = 45;
-  let windSpeed = 11;
 
   if (isPeak) {
-    // Pico de tráfico y menor dispersión
-    baseNo2 = isEveningPeak ? 95 : 80;
-    basePm25 = isEveningPeak ? 32 : 26;
-    basePm10 = isEveningPeak ? 54 : 44;
-    baseO3 = 28;
-    windSpeed = 4.2; // viento bajo en hora punta
+    baseNo2 = isEveningPeak ? 90 : 75;
+    basePm25 = isEveningPeak ? 30 : 24;
+    basePm10 = isEveningPeak ? 50 : 40;
+    baseO3 = 25;
   } else if (currentHour >= 23 || currentHour <= 6) {
-    baseNo2 = 18;
-    basePm25 = 9;
-    basePm10 = 16;
-    baseO3 = 35;
-    windSpeed = 7.5;
+    baseNo2 = 20;
+    basePm25 = 10;
+    basePm10 = 18;
+    baseO3 = 30;
   }
 
-  const finalPollutants: PollutantValues = {
-    no2: Math.round(baseNo2 * zoneMultiplier),
-    pm25: Math.round(basePm25 * zoneMultiplier),
-    pm10: Math.round(basePm10 * zoneMultiplier),
-    o3: Math.round(baseO3 * (zone.type === 'parque' ? 1.2 : 0.9)),
+  const simulatedPollutants: PollutantValues = {
+    no2: Math.round(baseNo2 * baseMultiplier),
+    pm25: Math.round(basePm25 * baseMultiplier),
+    pm10: Math.round(basePm10 * baseMultiplier),
+    o3: Math.round(baseO3 * (station.type === 'suburbana' ? 1.3 : 0.9)),
   };
 
-  const weather: WeatherValues = {
-    windSpeed: Math.round(windSpeed * 10) / 10,
-    temperature: 21,
-    humidity: 48,
-    windDirection: 'NE 4 km/h',
-  };
-
-  const calculated = calculateAqiAndDominant(finalPollutants);
+  const calculated = calculateAqiAndDominant(simulatedPollutants);
 
   return {
-    zoneId: zone.id,
-    zoneName: zone.name,
-    timestamp: now.toISOString(),
-    aqi: calculated.aqi,
-    level: calculated.level,
-    dominantPollutant: calculated.dominantPollutant,
-    pollutants: finalPollutants,
-    weather,
-    dataSource: 'simulated',
+    airQuality: {
+      zoneId: station.id,
+      zoneName: station.name,
+      address: station.address,
+      timestamp: now.toISOString(),
+      aqi: calculated.aqi,
+      level: calculated.level,
+      dominantPollutant: calculated.dominantPollutant,
+      pollutants: simulatedPollutants,
+      weather,
+      dataSource: 'simulated',
+    },
+    hourlyWeatherForecast,
   };
-}
-
-export function findZoneById(zoneId?: string): Zone {
-  if (!zoneId) return MADRID_ZONES[0];
-  const found = MADRID_ZONES.find((z) => z.id === zoneId);
-  return found || MADRID_ZONES[0];
 }

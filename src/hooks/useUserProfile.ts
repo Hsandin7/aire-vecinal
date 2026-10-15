@@ -1,13 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import type { UserProfile } from '../types';
-import { getUserProfile, updateUserProfile } from '../services/api';
 
 const LOCAL_STORAGE_KEY = 'airevecinal_user_profile';
+const ONBOARDING_KEY = 'airevecinal_onboarding_completed';
 
-const INITIAL_PROFILE: UserProfile = {
+const DEFAULT_PROFILE: UserProfile = {
   profile: 'deportista',
   hasAsthma: true,
-  favoriteZones: ['madrid-castellana'],
+  favoriteZones: ['28079008'], // Escuelas Aguirre por defecto
   alertTypes: 'all',
   notificationHours: {
     start: '07:30',
@@ -15,44 +15,31 @@ const INITIAL_PROFILE: UserProfile = {
   },
 };
 
-export function useUserProfile() {
-  const [profile, setProfile] = useState<UserProfile>(() => {
-    try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch {
-      // fallback to initial
+function readStoredProfile(): UserProfile {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (raw) {
+      return JSON.parse(raw);
     }
-    return INITIAL_PROFILE;
-  });
+  } catch (err) {
+    console.warn('[LocalStorage] No se pudo leer perfil:', err);
+  }
+  return DEFAULT_PROFILE;
+}
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+function readOnboardingCompleted(): boolean {
+  try {
+    return localStorage.getItem(ONBOARDING_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
 
-  // Sync with backend on mount
-  useEffect(() => {
-    let isMounted = true;
-    getUserProfile()
-      .then((serverProfile) => {
-        if (isMounted && serverProfile) {
-          setProfile(serverProfile);
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(serverProfile));
-        }
-      })
-      .catch((err) => {
-        console.warn('No se pudo sincronizar perfil con servidor:', err);
-      });
+export function useUserProfile() {
+  const [profile, setProfile] = useState<UserProfile>(readStoredProfile);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(readOnboardingCompleted);
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const update = useCallback(async (newFields: Partial<UserProfile>) => {
-    setLoading(true);
-    setError(null);
+  const updateProfile = useCallback(async (newFields: Partial<UserProfile>) => {
     try {
       const merged: UserProfile = {
         ...profile,
@@ -63,28 +50,41 @@ export function useUserProfile() {
         },
       };
 
-      // Optimistic update
       setProfile(merged);
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
-
-      // Persist to server
-      const updated = await updateUserProfile(merged);
-      setProfile(updated);
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
-      return updated;
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error al guardar perfil';
-      setError(msg);
-      throw err;
-    } finally {
-      setLoading(false);
+      return merged;
+    } catch (err) {
+      console.warn('[LocalStorage] Error al guardar perfil en dispositivo:', err);
+      return profile;
     }
   }, [profile]);
 
+  const completeOnboarding = useCallback((finalProfile?: Partial<UserProfile>) => {
+    try {
+      localStorage.setItem(ONBOARDING_KEY, 'true');
+      setHasCompletedOnboarding(true);
+      if (finalProfile) {
+        updateProfile(finalProfile);
+      }
+    } catch (err) {
+      console.warn('[LocalStorage] Error al marcar onboarding como completado:', err);
+    }
+  }, [updateProfile]);
+
+  const resetOnboarding = useCallback(() => {
+    try {
+      localStorage.removeItem(ONBOARDING_KEY);
+      setHasCompletedOnboarding(false);
+    } catch (err) {
+      console.warn('[LocalStorage] Error al reiniciar onboarding:', err);
+    }
+  }, []);
+
   return {
     profile,
-    loading,
-    error,
-    updateProfile: update,
+    updateProfile,
+    hasCompletedOnboarding,
+    completeOnboarding,
+    resetOnboarding,
   };
 }

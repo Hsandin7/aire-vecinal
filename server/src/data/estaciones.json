@@ -1,0 +1,218 @@
+[
+  {
+    "id": "28079004",
+    "code": "4",
+    "name": "Plaza de España",
+    "address": "Plaza de España",
+    "type": "urbana_trafico",
+    "coordinates": [40.4238823, -3.7122567],
+    "altitude": 637
+  },
+  {
+    "id": "28079008",
+    "code": "8",
+    "name": "Escuelas Aguirre",
+    "address": "Entre C/ Alcalá y C/ O’Donnell",
+    "type": "urbana_trafico",
+    "coordinates": [40.4215533, -3.6823158],
+    "altitude": 672
+  },
+  {
+    "id": "28079011",
+    "code": "11",
+    "name": "Ramón y Cajal",
+    "address": "Avda. Ramón y Cajal esq. C/ Príncipe de Vergara",
+    "type": "urbana_trafico",
+    "coordinates": [40.4514734, -3.6773491],
+    "altitude": 709
+  },
+  {
+    "id": "28079016",
+    "code": "16",
+    "name": "Arturo Soria",
+    "address": "C/ Arturo Soria esq. C/ Vizconde de los Asilos",
+    "type": "urbana_fondo",
+    "coordinates": [40.4400457, -3.6392422],
+    "altitude": 695
+  },
+  {
+    "id": "28079017",
+    "code": "17",
+    "name": "Villaverde",
+    "address": "C/ Juan Peñalver",
+    "type": "urbana_fondo",
+    "coordinates": [40.347147, -3.7133167],
+    "altitude": 601
+  },
+  {
+    "id": "28079018",
+    "code": "18",
+    "name": "Farolillo",
+    "address": "C/ Farolillo - C/ Ervigio",
+    "type": "urbana_fondo",
+    "coordinates": [40.3947825, -3.7318356],
+    "altitude": 625
+  },
+  {
+    "id": "28079024",
+    "code": "24",
+    "name": "Casa de Campo",
+    "address": "Casa de Campo (Terminal del Teleférico)",
+    "type": "suburbana",
+    "coordinates": [40.4193577, -3.7473445],
+    "altitude": 645
+  },
+  {
+    "id": "28079027",
+    "code": "27",
+    "name": "Barajas Pueblo",
+    "address": "C/ Júpiter, 21",
+    "type": "urbana_fondo",
+    "coordinates": [40.4769179, -3.5800258],
+    "altitude": 619
+  },
+  {
+    "id": "28079035",
+    "code": "35",
+    "name": "Plaza del Carmen",
+    "address": "Plaza del Carmen esq. Tres Cruces",
+    "type": "urbana_fondo",
+    "coordinates": [40.4192091, -3.7031662],
+    "altitude": 660
+  },
+  {
+    "id": "28079036",
+    "code": "36",
+    "name": "Moratalaz",
+    "address": "Avda. Moratalaz esq. Camino de los Vinateros",
+    "type": "urbana_trafico",
+    "coordinates": [40.4079517, -3.6453104],
+    "altitude": 671
+  },
+  {
+    "id": "28079038",
+    "code": "38",
+    "name": "Cuatro Caminos",
+    "address": "Avda. Pablo Iglesias esq. C/ Marqués de Lema",
+    "type": "urbana_trafico",
+    "coordinates": [40.4455439, -3.7071303],
+    "altitude": 699
+  },
+  {
+    "id": "28079039",
+    "code": "39",
+    "name": "Barrio del Pilar",
+    "address": "Avda. Betanzos esq. C/ Monforte de Lemos",
+    "type": "urbana_trafico",
+    "coordinates": [40.4782322, -3.7115364],
+    "altitude": 675
+  },
+  {
+    "id": "28079040",
+    "code": "40",
+    "name": "Vallecas",
+    "address": "C/ Arroyo del Olivar esq. C/ Río Grande",
+    "type": "urbana_fondo",
+    "coordinates": [40.3881478, -3.6515286],
+    "altitude": 678
+  },
+  {
+    "id": "28079047",
+    "code": "47",
+    "name": "Méndez Álvaro",
+    "address": "C/ Juan de Mariana / Plaza Amanecer",
+    "type": "urbana_fondo",
+    "coordinates": [40.3980991, -3.6868138],
+    "altitude": 600
+  },
+  {
+    "id": "28079048",
+    "code": "48",
+    "name": "Castellana",
+    "address": "C/ José Gutiérrez Abascal",
+    "type": "urbana_trafico",
+    "coordinates": [40.4398904, -3.6903729],
+    "altitude": 678
+  },
+  {
+    "id": "28079049",
+    "code": "49",
+    "name": "Parque del Retiro",
+    "address": "Paseo Venezuela - Palacio de Velázquez",
+    "type": "urbana_fondo",
+    "coordinates": [40.4144444, -3.6824999],
+    "altitude": 658
+  },
+  {
+    "id": "28079050",
+    "code": "50",
+    "name": "Plaza Castilla",
+    "address": "Plaza Castilla (Canal)",
+    "type": "urbana_trafico",
+    "coordinates": [40.4655841, -3.6887449],
+    "altitude": 730
+  },
+  {
+    "id": "28079054",
+    "code": "54",
+    "name": "Ensanche de Vallecas",
+    "address": "Avda. La Gavia / Avda. Las Suertes",
+    "type": "urbana_fondo",
+    "coordinates": [40.3730118, -3.6121394],
+    "altitude": 628
+  },
+  {
+    "id": "28079055",
+    "code": "55",
+    "name": "Urb. Embajada",
+    "address": "C/ Riaño (Barajas)",
+    "type": "urbana_fondo",
+    "coordinates": [40.4623628, -3.5805649],
+    "altitude": 614
+  },
+  {
+    "id": "28079056",
+    "code": "56",
+    "name": "Plaza Elíptica",
+    "address": "Plaza Elíptica - Avda. Oporto",
+    "type": "urbana_trafico",
+    "coordinates": [40.3850336, -3.7187679],
+    "altitude": 605
+  },
+  {
+    "id": "28079057",
+    "code": "57",
+    "name": "Sanchinarro",
+    "address": "C/ Princesa de Éboli esq. C/ María Tudor",
+    "type": "urbana_fondo",
+    "coordinates": [40.4942012, -3.6605173],
+    "altitude": 700
+  },
+  {
+    "id": "28079058",
+    "code": "58",
+    "name": "El Pardo",
+    "address": "Avda. La Guardia",
+    "type": "suburbana",
+    "coordinates": [40.5180701, -3.7746101],
+    "altitude": 611
+  },
+  {
+    "id": "28079059",
+    "code": "59",
+    "name": "Juan Carlos I",
+    "address": "Parque Juan Carlos I",
+    "type": "suburbana",
+    "coordinates": [40.465144, -3.609031],
+    "altitude": 660
+  },
+  {
+    "id": "28079060",
+    "code": "60",
+    "name": "Tres Olivos",
+    "address": "Plaza Tres Olivos",
+    "type": "urbana_fondo",
+    "coordinates": [40.5005477, -3.6897308],
+    "altitude": 709
+  }
+]
