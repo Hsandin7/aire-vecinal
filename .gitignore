@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+# Environment variables
+.env
+.env.*
+
+# Runtime generated data
+server/data/*.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
