@@ -1,0 +1,12 @@
+{
+  "profile": "asmatico",
+  "hasAsthma": true,
+  "favoriteZones": [
+    "madrid-castellana"
+  ],
+  "alertTypes": "all",
+  "notificationHours": {
+    "start": "07:30",
+    "end": "22:00"
+  }
+}
